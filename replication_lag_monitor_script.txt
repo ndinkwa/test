@@ -1,0 +1,44 @@
+
+
+
+#!/bin/bash
+
+# PostgreSQL connection details
+PGUSER="your_username"
+PGDATABASE="your_database"
+THRESHOLD=60  # Threshold in seconds
+
+# Fetch replication lag
+REPLICATION_LAG=$(psql -U $PGUSER -d $PGDATABASE -c "SELECT CASE WHEN pg_last_xlog_receive_location() = pg_last_xlog_replay_location() THEN 0 ELSE EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp()) END AS replication_lag;" -t)
+
+# Check if replication lag exceeds the threshold
+if [ $REPLICATION_LAG -gt $THRESHOLD ]; then
+    # Send email alert
+    SUBJECT="Replication Lag Alert"
+    EMAIL="your_email@example.com"
+    MESSAGE="Replication Lag: $REPLICATION_LAG seconds exceeds threshold of $THRESHOLD seconds."
+    echo "$MESSAGE" | mail -s "$SUBJECT" "$EMAIL"
+fi
+
+\\\\Replace your_username, your_database, your_email@example.com with the appropriate PostgreSQL credentials 
+and email address to receive alerts. Adjust the THRESHOLD variable to set the replication lag threshold you want to monitor.
+
+
+Automating Script Execution:
+
+1- Make the Script Executable:
+
+chmod +x monitor_replication_and_email.sh
+
+2- Schedule Script Execution:
+
+Use cron to run this script periodically. Open cron with crontab -e and add an entry like this to check replication lag every 15 minutes:
+
+*/15 * * * * /path/to/monitor_replication_and_email.sh
+
+
+Replace /path/to/monitor_replication_and_email.sh with the actual path to your script.
+
+
+This script will run at the specified interval, check the replication lag, and if it exceeds the threshold, 
+it will send an email alert. Adjust the monitoring frequency in cron as needed.
