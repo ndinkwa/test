@@ -1,0 +1,137 @@
+CREATE CREDENTIALS FOR POSTGRES ON LDAP
+
+SETUP POSTGRES(ONLINUX) TO AUTHENTICATE FROM WINDOWS
+
+1- Inter-change the servers IP (DNS) addresses e.g
+
+LDAP/AD Server IP = 192.167.0.122 ldap.basefiled.hopto.org
+PostgreSQL server IP = 192.167.0.165 postgres.basefield.hopto.org
+
+On linux Postgres
+
+#vi /etc/hosts   and paste
+
+--192.167.0.122 ldap.basefiled.hopto.org
+--192.167.0.165 postgres.basefield.hopto.org
+
+ON windows:
+#local disk(C:)windows\system32\drivers\etc   open via notepad as admin and paste
+
+--192.167.0.122 ldap.basefiled.hopto.org
+--192.167.0.165 postgres.basefield.hopto.org
+
+#on windows --ping postgres.basefield.hopto.org
+#on linux  --ping ldap.basefiled.hopto.org
+
+To make sure they're responding
+
+
+2- Open Server Manager on windows
+   -click on Add roles and features and take next and next, you should see your LDAP server if already configured and take next
+make sure -Active Directory Domain Services is checked, next -group policy management, .NET Framework 3.5(includes. NET 2.0 and 3.0) should be  and checked here & click next
+and the installation process will start.
+
+  -Once completed, click on the retangular icon at the top and click on "promote this server to a domain controller" and check 'Add a new forest'. On Root domain name: put your domain 
+name e.g basefield.hopto.org and next, then it will request for a password: put in your password and next and wait for it to automatically display our NetBIOS domain name: e,g BASEFIELD
+then take next, next, next and wait for the prerequisites check and click install if all passed. Once installation is complete, it will restart.
+
+Once done, click on tools on the Server Manager to check for -Active Directory Users and Computers.
+
+-Click on Active Directory Users and Computers, you should be able to see your DNS name e.g basefiled.hopto.org
+
+
+3- On your LDAP server open powershell and exec the following:
+
+#setspn -S POSTGRES/postgres.basefield.hopto.org@basefiled.hopto.org jaysonbrain
+
+------basefiled.hopto = your domain controller
+------jaysonbrain     = your ldap admin user
+
+#setspn -S HOST/postgres.basefield.hopto.org@basefiled.hopto.org jaysonbrain
+
+#ktpass /out jayson.keytab /princ POSTGRES/ostgres.basefield.hopto.org@basefiled.hopto.org /mapuser jaysonbrain@basefiled.hopto.org /pass Postgres134 /ptype KRB5_NT_PRINCIPAL
+
+-----Make sure your keytab files appears on the desktop (jayson.keytab file)
+
+#setspn -L jaysonbrain == To list all what you have as admin
+
+#Copy the keytab file to our postgres server.
+
+
+ON POSTGRES SERVER.
+
+#cd to the location of your keytab file (jayson.keytab)
+
+#chmod 0600 jayson.keytab
+
+1- put the file the postgresql.conf file
+
+#vi postgresql.conf  and search for #krb_server_keyfile = '/usr/pgdata/jayson.keytab/' and !wq to save changes.
+
+#restart the postgres server
+
+
+#sudo systemctl start postgresql-15.service
+
+#show krb_server_keyfile;
+
+#create user "jaysonbrain@basefiled.hopto.org" superuser createrole createdb;
+
+2- Edit the HBA.CONF file
+
+#vi hba.conf
+
+#rpm -qa |grep postgres = to check the software version to make sure there's "hostnogssenc" in the hba.conf. This is from 12v and above
+
+Put the following rules in the hba.conf file:
+
+# host     all         all         0.0.0.0/0       gss   include_realm=1 krb_realm=BASEFIELD.HOPTO.ORG    -wq! and exit
+
+#which psql = to check the path.
+#export PATH=/usr/pgdata:$PATH
+
+Restrt postgres
+
+#sudo systemctl start postgresql-15.service
+
+3- Install the krb5 package
+
+#yum install krb5-server krb5-workstation pam-krb5
+
+#ll /etc/krb*  to check for --/etc/krb5.conf-- file.
+
+#vi /etc/krb5.conf  -- To point the file to the direction of yoour domain controller.
+
+     -Uncomment #default_realm=BASEFIELD.HOPTO.ORG
+
+[realms]
+
+
+BASEFIELD.HOPTO.ORG = {
+kdc = ldap.basefiled.hopto.org
+admin_server = ldap.basefiled.hopto.org
+}
+
+[domain_realm]
+.basefield.hopto.org = BASEFIELD.HOPTO.ORG
+basefield.hopto.org.HOPTO.ORG
+
+after editing the above mentioned files, save and exit wq!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
