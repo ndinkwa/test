@@ -1,0 +1,93 @@
+
+STANDBY SERVER
+==============
+
+FAILOVER Test
+=============
+
+Step 1. 
+
+Promoting a Standby server to Primary (Failover): Before promoting Standby to Primary, 
+we will cross-check cluster health with repmgr cluster show command. Once we are confirmed our cluster health, 
+will stop Primary PostgreSQL to simulate Primary DB failure. 
+Then use repmgr standby promote to promote Standby DB to become new Primary.
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster show --compact
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster matrix
+
+#sudo systemctl stop postgresql-15.service
+
+#sudo systemctl status postgresql-15.service
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster show
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster matrix
+
+#/usr/pgsql-15/bin/repmgr standby promote -f /etc/repmgr/15/repmgr.conf --log-to-file
+
+#[postgres@AZW2BF-PGLP2 pgdata]$ grep "log_file" /etc/repmgr/15/repmgr.conf
+       log_file='/var/log/repmgr/repmgr.log'
+	   
+#cat /var/log/repmgr/repmgr.log
+
+#/usr/pgsql-15/bin/pg_isready
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster show
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster matrix
+
+
+ON OLD Primary SERVER
+=====================
+
+Step 2. 
+
+Failed primary rejoin: 
+We can use repmgr node rejoin command to set our old Primary as the new Standby. 
+Use option –dry-run this will perform any necessary checks and inform you about success/failure.
+
+#/usr/pgsql-15/bin/repmgr  node rejoin -f /etc/repmgr/15/repmgr.conf -d 'host=AZW2BF-PGLP2.corp.clearwayenergygroup.com dbname=repmgr user=repmgr' --verbose --dry-run
+
+#/usr/pgsql-15/bin/repmgr  node rejoin -f /etc/repmgr/15/repmgr.conf -d 'host=AZW2BF-PGLP2.corp.clearwayenergygroup.com dbname=repmgr user=repmgr' --verbose
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster show
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster matrix
+
+
+Cluster SWITCHOVER Test
+=====================
+
+Step 1.
+ 
+Cluster Switchover: 
+
+Sometimes we just want to be able to switch servers due to some scheduled maintenance on the Primary server. 
+This can be achieved using command repmgr standby switchover. Use option –dry-run first to check for any potential 
+error using switchover process. We can also use option –archive-ready to check that there is no backlog of WAL files 
+waiting to be archived in the Primary Server. Please note switchover must be executed from the standby node.
+
+After Step 1 we should be back in the same cluster configuration we were at the beginning.
+
+
+NEW Primary Server 
+
+#/usr/pgsql-15/bin/repmgr node check --archive-ready
+
+OLD Primary Server
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster show --compact
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster matrix
+
+
+#/usr/pgsql-15/bin/repmgr node check --archive-ready
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf standby switchover --dry-run
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf standby switchover
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster show --compact
+
+#/usr/pgsql-15/bin/repmgr -f /etc/repmgr/15/repmgr.conf cluster matrix
